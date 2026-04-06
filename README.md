@@ -1,4 +1,4 @@
-# 项目已修复，可以正常运行登录
+# 增强原项目，可以正常运行登录，增加Telegram通知
 
 # ☁️ ClawCloud Auto-Login / 自动保活
 
