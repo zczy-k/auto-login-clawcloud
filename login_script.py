@@ -46,9 +46,6 @@ def detect_post_password_error(page):
     ]):
         return "GitHub 用户名或密码错误"
 
-    if "session" in page.url and "github.com" in page.url:
-        return "提交 GitHub 用户名密码后仍停留在登录页，可能是用户名或密码错误"
-
     return None
 
 
@@ -61,9 +58,6 @@ def detect_post_2fa_error(page):
         "Incorrect code",
     ]):
         return "GitHub 2FA 验证码错误或已过期"
-
-    if "two-factor" in page.url or page.locator("#app_totp").count() > 0:
-        return "提交 2FA 验证码后仍停留在 2FA 页面，可能是 2FA 验证码错误或已过期"
 
     return None
 
@@ -161,9 +155,6 @@ def run_login():
                     page.fill("#password", password)
                     page.click("input[name='commit']")
                     page.wait_for_timeout(3000)
-                    password_error = detect_post_password_error(page)
-                    if password_error:
-                        fail(password_error, page)
                 page.screenshot(path="03_github_login.png")
                 print("📸 已截图: 03_github_login.png")
             except SystemExit:
@@ -188,9 +179,6 @@ def run_login():
                     except Exception:
                         pass
                     page.wait_for_timeout(4000)
-                    two_fa_error = detect_post_2fa_error(page)
-                    if two_fa_error:
-                        fail(two_fa_error, page)
                 except SystemExit:
                     raise
                 except Exception as e:
