@@ -22,7 +22,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb curl
 
       - name: Install Python Dependencies
         run: |
@@ -33,6 +33,8 @@ jobs:
           playwright install-deps chromium
 
       - name: Run Login Script
+        id: run_login
+        continue-on-error: true
         env:
           GH_USERNAME: ${{ secrets.GH_USERNAME }}
           GH_PASSWORD: ${{ secrets.GH_PASSWORD }}
@@ -46,3 +48,35 @@ jobs:
         with:
           name: all-debug-screenshots
           path: "*.png"
+
+      - name: Notify Telegram Success
+        if: always() && hashFiles('login_result.txt') != '' && hashFiles('06_final_result.png') != ''
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          if [ -z "$TG_BOT_TOKEN" ] || [ -z "$TG_CHAT_ID" ]; then
+            echo "Telegram secrets not configured, skipping notification."
+            exit 0
+          fi
+          STATUS=$(grep '^STATUS=' login_result.txt | cut -d= -f2-)
+          REASON=$(grep '^REASON=' login_result.txt | cut -d= -f2-)
+          FINAL_URL=$(grep '^FINAL_URL=' login_result.txt | cut -d= -f2-)
+          if [ "$STATUS" = "success" ]; then
+            MESSAGE="✅ ClawCloud 自动登录成功%0A原因：$REASON%0A最终地址：$FINAL_URL"
+          else
+            MESSAGE="❌ ClawCloud 自动登录失败%0A失败原因：$REASON%0A最终地址：$FINAL_URL"
+          fi
+          curl -sS -X POST "https://api.telegram.org/bot$TG_BOT_TOKEN/sendPhoto" \
+            -F chat_id="$TG_CHAT_ID" \
+            -F photo=@06_final_result.png \
+            -F caption="$MESSAGE"
+
+      - name: Fail workflow if login failed
+        if: always() && hashFiles('login_result.txt') != ''
+        run: |
+          STATUS=$(grep '^STATUS=' login_result.txt | cut -d= -f2-)
+          if [ "$STATUS" != "success" ]; then
+            echo "Login failed."
+            exit 1
+          fi
